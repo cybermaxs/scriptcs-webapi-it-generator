@@ -26,7 +26,7 @@ namespace  Tests
             this.Client = new HttpClient();
 
             //TODO : change the base address
-            this.Client.BaseAddress = new Uri("http://localhost");
+            this.Client.BaseAddress = new Uri("@Model.BaseAddress");
 
             //TODO set vars here
         }
@@ -34,7 +34,7 @@ namespace  Tests
         [TestCleanup]
         public void TestCleanup()
         {
-            Debug.WriteLine(this.Response.RequestMessage.RequestUri);
+            Debug.WriteLine("Requested Uri : "+this.Response.RequestMessage.RequestUri);
             Assert.IsTrue(this.Response.IsSuccessStatusCode);
             Assert.AreEqual(HttpStatusCode.OK, this.Response.StatusCode);
 
@@ -51,7 +51,7 @@ namespace  Tests
     	@foreach (var action in Model.Actions) {
     	<text>
  		[TestMethod]
-        public void @(action.Key)()
+        public void @(Model.Name+"_"+action.Key)()
         {	            
 			//act
 	        this.Response = this.Client.GetAsync("@Raw(Model.RoutePrefix +action.Value)").Result;

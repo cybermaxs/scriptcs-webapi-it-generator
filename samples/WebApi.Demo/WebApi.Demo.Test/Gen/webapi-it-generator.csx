@@ -8,8 +8,6 @@ var path = System.Environment.CurrentDirectory;
 var outpath="out";
 bool debug=false;
 
-//path = @"C:\betc-projets\WK_HORSERACING\Front\Dev\Development\HorseRacing.Service\HorseRacing.Api\bin";
-
 foreach(var arg in Env.ScriptArgs)
 {
 	string[] parts = arg.Split('=');
@@ -28,9 +26,6 @@ foreach(var arg in Env.ScriptArgs)
 					path = parts[1];
 				break;
 				case "outpath" :
-				if(!Directory.Exists(parts[1]))
-					Console.WriteLine("Directory does not exists "+ parts[1]);
-				else
 					outpath = parts[1];
 				break;
 			default:
@@ -38,16 +33,18 @@ foreach(var arg in Env.ScriptArgs)
 		}
 	}
 }
-
+Directory.CreateDirectory(outpath);
 // PARSING
+
+var alreadyloaded = AppDomain.CurrentDomain.GetAssemblies().Select(a=>a.GetName().Name+".dll").ToArray();
 
 var files = System.IO.Directory.GetFiles(path, "*.dll", System.IO.SearchOption.AllDirectories);
 foreach(var file in files)
 {
 	//skip Microsoft.* and System.* assemblies
-	if(file.Contains("Microsoft") || file.Contains("System"))
+	if(file.Contains("Microsoft") || file.Contains("System") || alreadyloaded.Contains(file))
 		continue;
-		Console.WriteLine(file);
+	//Console.WriteLine(file);
 	try
 	{
 		var assembly = Assembly.LoadFrom(file);
@@ -96,7 +93,7 @@ foreach(var file in files)
 		        var template = File.ReadAllText("vs-it-template.razor");
 		        //generate test file
 
-		          string result = Razor.Parse(template, new {Name = controllerdef.Name, Vars=controllerdef.Vars, Actions = controllerdef.Actions, RoutePrefix = controllerdef.RoutePrefix});
+		        string result = Razor.Parse(template, new {Name = controllerdef.Name, Vars=controllerdef.Vars, Actions = controllerdef.Actions, RoutePrefix = controllerdef.RoutePrefix});
 		        
 		        var filename=Path.Combine(outpath, controllerdef.FileName);
 

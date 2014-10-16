@@ -51,7 +51,7 @@ namespace  Tests
     	@foreach (var action in Model.Actions) {
     	<text>
  		[TestMethod]
-        public void @(action.Key)()
+        public void @(Model.Name+"_"+action.Key)()
         {	            
 			//act
 	        this.Response = this.Client.GetAsync("@Raw(Model.RoutePrefix +action.Value)").Result;

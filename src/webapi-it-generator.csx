@@ -6,10 +6,13 @@ using System.Text.RegularExpressions;
 //settings
 var path = System.Environment.CurrentDirectory;
 var outpath="out";
-bool debug=false;
+bool debug=true;
+string baseAddress="http://localhost";
 
-//path = @"C:\betc-projets\WK_HORSERACING\Front\Dev\Development\HorseRacing.Service\HorseRacing.Api\bin";
+//path=@"C:\__repos\scriptcs-webapi-it-generator\samples\WebApi.Demo\WebApi.Demo\bin";
+//path = @"C:\betc-projets\MVC_GLOBAL_ALL\Front\Dev\Development\Global\Global.Mobile.Api\bin";
 
+//parse settings
 foreach(var arg in Env.ScriptArgs)
 {
 	string[] parts = arg.Split('=');
@@ -27,11 +30,11 @@ foreach(var arg in Env.ScriptArgs)
 				else
 					path = parts[1];
 				break;
-				case "outpath" :
-				if(!Directory.Exists(parts[1]))
-					Console.WriteLine("Directory does not exists "+ parts[1]);
-				else
+			case "outpath" :
 					outpath = parts[1];
+				break;
+			case "baseAddress" :
+				baseAddress = parts[1];
 				break;
 			default:
 				Console.WriteLine("unknow parameter "+ parts[0]);
@@ -39,7 +42,9 @@ foreach(var arg in Env.ScriptArgs)
 	}
 }
 
-// PARSING
+//create output directory
+if(!Directory.Exists(outpath))
+	Directory.CreateDirectory(outpath);
 
 var files = System.IO.Directory.GetFiles(path, "*.dll", System.IO.SearchOption.AllDirectories);
 foreach(var file in files)
@@ -65,12 +70,22 @@ foreach(var file in files)
 	            controllerdef.RoutePrefix=routePrefixAtt.Prefix;
 	        }
 
-	        foreach (var apiAction in apiController.GetMethods().Where(m => m.GetCustomAttribute<System.Web.Http.RouteAttribute>(false)!=null)) 
+	        foreach (var apiAction in apiController
+	        							.GetMethods()
+	        							.Where(m => m.GetCustomAttribute<System.Web.Http.RouteAttribute>(false)!=null)) 
 	        {
-	        	// only HttpGet is supported ... for now
-	        	var notsupported = new string[] {"HttpPostAttribute", "HttpPutAttribute", "HttpHeadAttribute", "HttpOptionsAttribute", "HttpHeaderAttribute", "HttpDeleteAttribute"};
+	        	// only HttpGetAttribute is supported ... for now
+	        	var notsupportedAtt = new string[] {"HttpPostAttribute", "HttpPutAttribute", "HttpHeadAttribute", "HttpOptionsAttribute", "HttpHeaderAttribute", "HttpDeleteAttribute"};
 	        	var atts = apiAction.GetCustomAttributes().Select(t=>t.GetType().Name);
-				if(atts.Intersect(notsupported).Count()>0)
+				if(atts.Intersect(notsupportedAtt).Count()>0)
+				{
+					if(debug) Console.WriteLine("skipped=>"+apiAction.ToString());
+					continue;
+				}
+
+				var notsupportedName = new string[] {"Post", "Put", "Delete"};
+
+				if(notsupportedName.Any(n=> apiAction.Name.Contains(n)))
 				{
 					if(debug) Console.WriteLine("skipped=>"+apiAction.ToString());
 					continue;
@@ -96,7 +111,7 @@ foreach(var file in files)
 		        var template = File.ReadAllText("vs-it-template.razor");
 		        //generate test file
 
-		          string result = Razor.Parse(template, new {Name = controllerdef.Name, Vars=controllerdef.Vars, Actions = controllerdef.Actions, RoutePrefix = controllerdef.RoutePrefix});
+		        string result = Razor.Parse(template, new {Name = controllerdef.Name,BaseAddress=baseAddress, Vars=controllerdef.Vars, Actions = controllerdef.Actions, RoutePrefix = controllerdef.RoutePrefix});
 		        
 		        var filename=Path.Combine(outpath, controllerdef.FileName);
 
@@ -117,7 +132,7 @@ foreach(var file in files)
 	}
 	catch(Exception ex) 
 	{
-	if(debug)  Console.WriteLine(string.Format("Could not load file {0} ; Reason {1}", file, ex.ToString()));
+		if(debug)  Console.WriteLine(string.Format("Could not load file {0} ; Reason {1}", file, ex.ToString()));
 	}
 	
 }
@@ -153,6 +168,15 @@ public class ControllerDef
 	        string key = m.Groups[1].Value;
 
 	        var parts = key.Split(':');
+	        if(parts.Length==1)
+	        {
+	        //first is name
+		        var name = parts[0];
+		        //second is type
+				var typ = "string";
+				Vars[name]=typ;
+
+	    	}
 	        if(parts.Length==2)
 	        {
 	        //first is name
