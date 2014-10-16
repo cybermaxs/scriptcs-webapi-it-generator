@@ -1,0 +1,1 @@
+scriptcs ..\src\webapi-it-generator.csx -- debug=true path=C:\__repos\scriptcs-webapi-it-generator\samples\WebApi.Demo\WebApi.Demo\bin
