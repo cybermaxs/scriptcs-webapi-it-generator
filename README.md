@@ -8,6 +8,10 @@ I was asked to do a performance of a large web api containing many controllers a
 In the same time, as this api is still in dev, it changes very often (additions and deletions)
 To automate this task, I need an easy way to generate integration tests.
 
+###Demo
+This repo contains a simple web api project : run command generate_it to generate test files.
+You can also [inspect the generated files](https://github.com/Cybermaxs/scriptcs-webapi-it-generator/tree/master/samples/WebApi.Demo/WebApi.Demo.Test/Generated). 
+
 ###WORKS ON MY MACHINE
 This can be viewed as a dump of my work.
 Don't like my test template ? don't hesitate to adapt it to your context.
