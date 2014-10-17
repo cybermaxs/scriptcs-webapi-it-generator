@@ -11,13 +11,13 @@ namespace WebApi.Demo.Controllers
     public class ValuesController : ApiController
     {
         [Route("all")]
-        public IEnumerable<string> Get()
+        public IEnumerable<string> Getter()
         {
             return new string[] { "value1", "value2" };
         }
 
         [Route("{id:int}")]
-        public string Get(int id)
+        public string GetById(int id)
         {
             return "value";
         }

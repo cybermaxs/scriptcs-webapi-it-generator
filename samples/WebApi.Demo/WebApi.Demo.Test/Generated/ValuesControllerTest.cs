@@ -9,15 +9,13 @@ using System.Net.Http;
 namespace  Tests
 {
     [TestClass]
-    public class @(Model.Name)Test
+    public class ValuesControllerTest
     {
         HttpClient Client { get; set; }
         HttpResponseMessage Response { get; set; }
 
         //vars
-        @foreach (var variable in Model.Vars) {
-       	<text>private @variable.Value @variable.Key;</text>
-        }
+       	private int id;
 
         #region TestInit & Cleanup
         [TestInitializeAttribute]
@@ -26,7 +24,7 @@ namespace  Tests
             this.Client = new HttpClient();
 
             //TODO : change the base address
-            this.Client.BaseAddress = new Uri("http://localhost");
+            this.Client.BaseAddress = new Uri("http://localhost:33442/");
 
             //TODO set vars here
         }
@@ -34,7 +32,7 @@ namespace  Tests
         [TestCleanup]
         public void TestCleanup()
         {
-            Debug.WriteLine(this.Response.RequestMessage.RequestUri);
+            Debug.WriteLine("Requested Uri : "+this.Response.RequestMessage.RequestUri);
             Assert.IsTrue(this.Response.IsSuccessStatusCode);
             Assert.AreEqual(HttpStatusCode.OK, this.Response.StatusCode);
 
@@ -48,17 +46,22 @@ namespace  Tests
         #endregion
 
 
-    	@foreach (var action in Model.Actions) {
-    	<text>
+    	
  		[TestMethod]
-        public void @(Model.Name+"_"+action.Key)()
+        public void ValuesController_Getter()
         {	            
 			//act
-	        this.Response = this.Client.GetAsync("@Raw(Model.RoutePrefix +action.Value)").Result;
+	        this.Response = this.Client.GetAsync("values/all").Result;
 	    }
-	    </text>
-	    //line break
+	    
+    	
+ 		[TestMethod]
+        public void ValuesController_GetById()
+        {	            
+			//act
+	        this.Response = this.Client.GetAsync("values/"+this.id+"").Result;
 	    }
+	    
 	
 	}
 

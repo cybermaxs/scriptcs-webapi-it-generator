@@ -9,15 +9,14 @@ using System.Net.Http;
 namespace  Tests
 {
     [TestClass]
-    public class @(Model.Name)Test
+    public class TodoControllerTest
     {
         HttpClient Client { get; set; }
         HttpResponseMessage Response { get; set; }
 
         //vars
-        @foreach (var variable in Model.Vars) {
-       	<text>private @variable.Value @variable.Key;</text>
-        }
+       	private int id;
+       	private string name;
 
         #region TestInit & Cleanup
         [TestInitializeAttribute]
@@ -26,7 +25,7 @@ namespace  Tests
             this.Client = new HttpClient();
 
             //TODO : change the base address
-            this.Client.BaseAddress = new Uri("@Model.BaseAddress");
+            this.Client.BaseAddress = new Uri("http://localhost:33442/");
 
             //TODO set vars here
         }
@@ -48,17 +47,14 @@ namespace  Tests
         #endregion
 
 
-    	@foreach (var action in Model.Actions) {
-    	<text>
+    	
  		[TestMethod]
-        public void @(Model.Name+"_"+action.Key)()
+        public void TodoController_Get()
         {	            
 			//act
-	        this.Response = this.Client.GetAsync("@Raw(Model.RoutePrefix+ "/"+ action.Value)").Result;
+	        this.Response = this.Client.GetAsync("todo/"+this.name+"").Result;
 	    }
-	    </text>
-	    //line break
-	    }
+	    
 	
 	}
 

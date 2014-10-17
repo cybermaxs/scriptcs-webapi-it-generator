@@ -6,11 +6,11 @@ using System.Text.RegularExpressions;
 //settings
 var path = System.Environment.CurrentDirectory;
 var outpath="out";
-bool debug=true;
+bool debug=false;
 string baseAddress="http://localhost";
+var workingDir= Path.GetDirectoryName(System.Environment.GetCommandLineArgs()[1]);
 
-//path=@"C:\__repos\scriptcs-webapi-it-generator\samples\WebApi.Demo\WebApi.Demo\bin";
-//path = @"C:\betc-projets\MVC_GLOBAL_ALL\Front\Dev\Development\Global\Global.Mobile.Api\bin";
+
 
 //parse settings
 foreach(var arg in Env.ScriptArgs)
@@ -26,7 +26,7 @@ foreach(var arg in Env.ScriptArgs)
 				break;
 			case "path" :
 				if(!Directory.Exists(parts[1]))
-					Console.WriteLine("Directory does not exists "+ parts[1]);
+					Console.WriteLine("Directory does not exists :"+ parts[1]);
 				else
 					path = parts[1];
 				break;
@@ -42,37 +42,39 @@ foreach(var arg in Env.ScriptArgs)
 	}
 }
 
-//create output directory
-if(!Directory.Exists(outpath))
-	Directory.CreateDirectory(outpath);
-
 var files = System.IO.Directory.GetFiles(path, "*.dll", System.IO.SearchOption.AllDirectories);
+if(debug) Console.WriteLine(string.Format("{0} dll to parse", files.Length));
 foreach(var file in files)
 {
 	//skip Microsoft.* and System.* assemblies
 	if(file.Contains("Microsoft") || file.Contains("System"))
 		continue;
-	//Console.WriteLine(file);
+	
 	try
 	{
 		var assembly = Assembly.LoadFrom(file);
+
+
+
 		//type
 		foreach(var apiController in assembly.GetTypes().Where(t=>t.BaseType == typeof(System.Web.Http.ApiController))) 
 		{
-			var controllerdef = new ControllerDef();
-			controllerdef.Name = apiController.Name;
+			var controllerName = apiController.Name;
+			var routePrefix = string.Empty;
+			Dictionary<string, string> Actions = new Dictionary<string, string>();
+			Dictionary<string, string> Vars = new Dictionary<string, string>();
+
 
 			//first check routePrefix (class level)
 	        var routePrefixAtt = apiController.GetCustomAttribute<System.Web.Http.RoutePrefixAttribute>(false);
 	        if(routePrefixAtt !=null) 
 	        {
 	        	//have route prefix
-	            controllerdef.RoutePrefix=routePrefixAtt.Prefix;
+	            routePrefix=routePrefixAtt.Prefix;
 	        }
 
-	        foreach (var apiAction in apiController
-	        							.GetMethods()
-	        							.Where(m => m.GetCustomAttribute<System.Web.Http.RouteAttribute>(false)!=null)) 
+	        //find api actions
+	        foreach (var apiAction in apiController.GetMethods().Where(m => m.GetCustomAttribute<System.Web.Http.RouteAttribute>(false)!=null)) 
 	        {
 	        	// only HttpGetAttribute is supported ... for now
 	        	var notsupportedAtt = new string[] {"HttpPostAttribute", "HttpPutAttribute", "HttpHeadAttribute", "HttpOptionsAttribute", "HttpHeaderAttribute", "HttpDeleteAttribute"};
@@ -101,34 +103,45 @@ foreach(var file in files)
 					route=routeAtt.Template;
 				}
 
-				controllerdef.AddAction(actionName, route);
+				//
+				Actions[actionName]=ReplaceParameters(route, Vars);
 	        }
 
+	        //generate test file
 	        try 
 	        {	            
+	        	var filename=Path.Combine(outpath, controllerName+"Test.cs");
 
+				if(debug)  Console.WriteLine("trying to generate "+ filename);
 	        	// generate one file per ApiController
-		        var template = File.ReadAllText("vs-it-template.razor");
+		        var template = File.ReadAllText(Path.Combine(workingDir, "vs-it-template.razor"));
 		        //generate test file
 
-		        string result = Razor.Parse(template, new {Name = controllerdef.Name,BaseAddress=baseAddress, Vars=controllerdef.Vars, Actions = controllerdef.Actions, RoutePrefix = controllerdef.RoutePrefix});
+		        string result = Razor.Parse(template, new {Name = controllerName,BaseAddress=baseAddress, Vars=Vars, Actions = Actions, RoutePrefix = routePrefix});
 		        
-		        var filename=Path.Combine(outpath, controllerdef.FileName);
+		        
+		        //create output directory
+				if(!Directory.Exists(outpath))
+					Directory.CreateDirectory(outpath);
 
 		        if(File.Exists(filename))
 					File.Delete(filename);
 				File.AppendAllText(filename, result);
 
-				if(controllerdef.Actions.Count()>0)
-					Console.WriteLine(string.Format("File {0} generated ({1} tests, {2} variables)", filename, controllerdef.Actions.Count(), controllerdef.Vars.Count()));
+				if(Actions.Count()>0)
+					Console.WriteLine(string.Format("File {0} generated ({1} tests, {2} variables)", filename, Actions.Count(), Vars.Count()));
 
 			} 
 			catch (Exception ex) 
 			{
-	            if(debug)  Console.WriteLine(string.Format("Could not generate test file {0} ; Reason {1}", controllerdef.FileName, ex.ToString()));
+	            if(debug)  Console.WriteLine(string.Format("Could not generate test file; Reason {0}", ex.ToString()));
 	        }
     	}
 	
+	}
+		catch(ArgumentException aex) 
+	{
+		if(debug)  Console.WriteLine(string.Format("Could not load file {0} ; Reason {1}", file, aex.ToString()));
 	}
 	catch(Exception ex) 
 	{
@@ -137,58 +150,27 @@ foreach(var file in files)
 	
 }
 
-
-public class ControllerDef
+public string ReplaceParameters(string route, Dictionary<string, string> vars)
 {
-	public string Name {get;set;}
-	public string FileName {get{return this.Name+"Test.cs";}}
-	public string RoutePrefix {get;set;}
+	//Console.WriteLine(route);
+    var rex = new Regex(@"\{([^}]+)}");
+    return(rex.Replace(route, delegate(Match m)
+    {
+        string key = m.Groups[1].Value;
+	    var parts = key.Split(':');
 
-	public Dictionary<string, string> Actions {get;set;}
-	public Dictionary<string, string> Vars {get;set;}
-
-	public ControllerDef()
-	{
-		this.Actions = new Dictionary<string, string>();
-		this.Vars = new Dictionary<string, string>();
-	}
-
-	public void AddAction(string name, string route)
-	{
-		route = ReplaceTokens(route);
-		this.Actions.Add(name, route);
-	}
-
-	private string ReplaceTokens(string route)
-	{
-		//Console.WriteLine(route);
-	    var rex = new Regex(@"\{([^}]+)}");
-	    return(rex.Replace(route, delegate(Match m)
-	    {
-	        string key = m.Groups[1].Value;
-
-	        var parts = key.Split(':');
-	        if(parts.Length==1)
+        if(!vars.ContainsKey(parts[0]))
+        {
+	        if(parts.Length==1 || parts.Length==2)
 	        {
-	        //first is name
+		        //first is name
 		        var name = parts[0];
 		        //second is type
-				var typ = "string";
-				Vars[name]=typ;
+				var typ = parts.Length==2 ? parts[1] : "string"; //not specified means string
+				vars[name]=typ;
 
 	    	}
-	        if(parts.Length==2)
-	        {
-	        //first is name
-		        var name = parts[0];
-		        //second is type
-				var typ = parts[1];
-				Vars[name]=typ;
-
-	    	}
-
-	        return @"""+this."+parts[0]+@"+""";
-	        //return(key);
-	    }));
-	}
+	    }
+	    return @"""+this."+parts[0]+@"+""";
+	   }));
 }

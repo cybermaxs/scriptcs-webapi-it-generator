@@ -1,0 +1,1 @@
+scriptcs ..\src\webapi-it-generator.csx -- path=WebApi.Demo\WebApi.Demo\bin outpath=WebApi.Demo\WebApi.Demo.Test\Generated baseAddress=http://localhost:33442/
